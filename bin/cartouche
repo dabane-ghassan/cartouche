@@ -1,0 +1,77 @@
+#!/bin/sh
+# cartouche: drive the island from a terminal, a launcher or a keyboard shortcut.
+# https://github.com/dabane-ghassan/cartouche
+
+UUID="cartouche@dabane-ghassan.github.io"
+SHELL_PATH="/io/github/dabane_ghassan/Cartouche"
+SHELL_IFACE="io.github.dabane_ghassan.Cartouche"
+INSTALLER="https://dabane-ghassan.github.io/cartouche/install.sh"
+
+usage() {
+    cat <<USAGE
+Usage: cartouche <command>
+
+  open | close | toggle     open the island up, or close it
+  dismiss                   put away what it is showing
+  play | next | previous    control what is playing
+  state                     what the island is doing, as JSON
+  settings                  open the settings (also: prefs)
+  update                    install the latest version
+  uninstall                 remove Cartouche
+USAGE
+}
+
+call() {
+    gdbus call --session --dest org.gnome.Shell --object-path "$SHELL_PATH" --method "$SHELL_IFACE.$1" 2>/dev/null
+}
+
+notify() {
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a Cartouche -i io.github.dabane_ghassan.Cartouche "Cartouche" "$1"
+    fi
+    echo "$1" >&2
+}
+
+need() {
+    call GetState >/dev/null && return 0
+    if ! command -v gnome-extensions >/dev/null 2>&1; then
+        notify "Cartouche needs the GNOME desktop."
+        exit 1
+    fi
+    gnome-extensions enable "$UUID" >/dev/null 2>&1
+    sleep 1
+    call GetState >/dev/null && return 0
+    notify "Almost there: log out and back in once so GNOME loads Cartouche."
+    exit 1
+}
+
+# ('<json>',) -> <json>
+unwrap() {
+    sed -e "s/^(['\"]//" -e "s/['\"],)\$//" -e 's/\\\\/\\/g' -e "s/\\\\'/'/g" -e 's/\\"/"/g'
+}
+
+fetch() {
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$1"
+    else
+        wget -qO- "$1"
+    fi
+}
+
+case "${1:-}" in
+    open|expand)    need; call Expand >/dev/null ;;
+    close|collapse) need; call Collapse >/dev/null ;;
+    toggle)         need; call Toggle >/dev/null ;;
+    dismiss)        need; call Dismiss >/dev/null ;;
+    play|pause|play-pause) need; call PlayPause >/dev/null ;;
+    next)           need; call Next >/dev/null ;;
+    previous|prev)  need; call Previous >/dev/null ;;
+    state)          need; call GetState | unwrap; echo ;;
+    settings|prefs|"")
+        if [ -z "${1:-}" ] && [ -t 1 ]; then usage; exit 0; fi
+        gnome-extensions prefs "$UUID" 2>/dev/null || notify "Cartouche is not installed yet, or GNOME has not loaded it: log out and back in once." ;;
+    update)    fetch "$INSTALLER" | sh ;;
+    uninstall) fetch "$INSTALLER" | sh -s -- --remove ;;
+    -h|--help|help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac

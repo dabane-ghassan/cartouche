@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Cartouche
+GenericName=Dynamic Island
+Comment=A Dynamic Island for the GNOME top bar
+Exec=cartouche settings
+Icon=io.github.dabane_ghassan.Cartouche
+Terminal=false
+Categories=Utility;GNOME;Settings;
+Keywords=dynamic;island;notch;music;now playing;notifications;hud;volume;alcove;
+StartupNotify=false
+Actions=open;
+
+[Desktop Action open]
+Name=Open the Island
+Exec=cartouche open

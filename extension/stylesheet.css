@@ -1,0 +1,418 @@
+/* Cartouche: a Dynamic Island for GNOME. */
+
+/* ---------------------------------------------------------------- the island */
+
+.cartouche-island {
+  background-color: #000;
+  color: #fff;
+  border-radius: 14px;
+}
+.cartouche-island.cartouche-graphite {
+  background-color: #2a2a2e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cartouche-title {
+  font-weight: bold;
+  font-size: 10.5pt;
+  color: #fff;
+}
+.cartouche-subtitle {
+  font-size: 9.5pt;
+  color: rgba(255, 255, 255, 0.62);
+}
+.cartouche-caption {
+  font-size: 8.5pt;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---------------------------------------------------------------- at rest: the pill */
+
+.cartouche-compact {
+  padding: 0 14px;
+  spacing: 8px;
+}
+.cartouche-compact:media {
+  padding: 0 9px 0 4px;
+  spacing: 9px;
+}
+.cartouche-clock {
+  font-weight: bold;
+  font-feature-settings: "tnum";
+  color: #fff;
+}
+.cartouche-compact-title {
+  max-width: 220px;
+}
+.cartouche-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #fff;
+}
+
+.cartouche-art {
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.cartouche-art-compact {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+.cartouche-art-large {
+  width: 64px;
+  height: 64px;
+  border-radius: 13px;
+}
+.cartouche-art-activity {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.cartouche-art-placeholder {
+  icon-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.cartouche-art-large .cartouche-art-placeholder {
+  icon-size: 26px;
+}
+.cartouche-art-activity .cartouche-art-placeholder {
+  icon-size: 16px;
+}
+
+.cartouche-bars {
+  spacing: 2px;
+  height: 14px;
+}
+.cartouche-bar {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.85);
+}
+.cartouche-bars-media {
+  height: 12px;
+}
+.cartouche-bars-media .cartouche-bar {
+  height: 12px;
+}
+
+/* ---------------------------------------------------------------- HUD */
+
+.cartouche-hud {
+  width: 290px;
+  padding: 0 16px 0 13px;
+  spacing: 12px;
+}
+.cartouche-hud-icon {
+  icon-size: 16px;
+  color: #fff;
+}
+.cartouche-hud-label {
+  font-weight: bold;
+  font-size: 10pt;
+}
+.cartouche-hud-percent {
+  min-width: 38px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 9.5pt;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cartouche-level-bar {
+  height: 6px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.cartouche-level-fill {
+  border-radius: 3px;
+  background-color: #fff;
+}
+.cartouche-level-fill:overdrive {
+  background-color: #ff9f0a;
+}
+.cartouche-segments {
+  spacing: 2px;
+  height: 8px;
+}
+.cartouche-segment {
+  height: 8px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.18);
+}
+.cartouche-segment:lit {
+  background-color: #fff;
+}
+
+/* ---------------------------------------------------------------- announcements */
+
+.cartouche-activity {
+  width: 330px;
+  padding: 0 16px 0 7px;
+  spacing: 11px;
+}
+.cartouche-activity-lead {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  background-color: #3a3a3c;
+}
+.cartouche-activity-icon {
+  icon-size: 17px;
+  color: #fff;
+}
+.cartouche-activity-text {
+  spacing: 1px;
+}
+.cartouche-activity-trail {
+  font-weight: bold;
+  font-size: 10.5pt;
+  font-feature-settings: "tnum";
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- notifications */
+
+.cartouche-notification {
+  width: 420px;
+  padding: 12px 12px 13px 13px;
+  spacing: 10px;
+}
+.cartouche-notification-row {
+  spacing: 11px;
+}
+.cartouche-notification-icon-bin {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.cartouche-notification-icon {
+  icon-size: 26px;
+}
+.cartouche-notification-text {
+  spacing: 1px;
+}
+.cartouche-notification-header {
+  spacing: 8px;
+}
+.cartouche-body {
+  font-size: 9.5pt;
+  color: rgba(255, 255, 255, 0.75);
+  max-height: 2.9em;
+}
+.cartouche-actions {
+  spacing: 8px;
+}
+.cartouche-action {
+  padding: 6px 10px;
+  border-radius: 99px;
+  font-size: 9.5pt;
+  font-weight: bold;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.cartouche-action:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.cartouche-action:active {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.cartouche-button {
+  border-radius: 99px;
+  color: #fff;
+}
+.cartouche-button:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.cartouche-button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.cartouche-button:focus {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4);
+}
+.cartouche-close {
+  padding: 4px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.cartouche-close StIcon {
+  icon-size: 12px;
+}
+.cartouche-control {
+  padding: 7px;
+}
+.cartouche-control StIcon {
+  icon-size: 18px;
+}
+.cartouche-control-main StIcon {
+  icon-size: 24px;
+}
+.cartouche-chip {
+  padding: 7px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.cartouche-chip StIcon {
+  icon-size: 14px;
+}
+.cartouche-chip:checked {
+  background-color: #5e5ce6;
+}
+.cartouche-chip:unread {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+/* ---------------------------------------------------------------- opened up */
+
+.cartouche-dashboard {
+  padding: 16px 18px 14px 18px;
+  spacing: 12px;
+}
+.cartouche-dashboard-row {
+  spacing: 18px;
+}
+.cartouche-divider {
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.cartouche-media {
+  width: 300px;
+  spacing: 10px;
+}
+.cartouche-media-top {
+  spacing: 13px;
+}
+.cartouche-art-button {
+  border-radius: 13px;
+}
+.cartouche-media-info {
+  spacing: 2px;
+}
+.cartouche-media-app {
+  spacing: 6px;
+  padding-top: 4px;
+}
+.cartouche-media-app-icon {
+  icon-size: 14px;
+}
+.cartouche-progress {
+  spacing: 9px;
+}
+.cartouche-time {
+  font-size: 8.5pt;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.55);
+  min-width: 34px;
+}
+.cartouche-progress .cartouche-time:last-child {
+  text-align: right;
+}
+.cartouche-track {
+  height: 5px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.cartouche-track:seekable:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+.cartouche-track-fill {
+  border-radius: 3px;
+  background-color: #fff;
+}
+.cartouche-controls {
+  spacing: 18px;
+}
+
+.cartouche-empty {
+  width: 170px;
+  spacing: 6px;
+}
+.cartouche-empty-icon {
+  icon-size: 26px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cartouche-calendar {
+  width: 236px;
+  spacing: 2px;
+}
+.cartouche-weekday {
+  font-weight: bold;
+  color: #ff453a;
+}
+.cartouche-date {
+  font-size: 13pt;
+}
+.cartouche-week {
+  padding: 8px 0 6px 0;
+}
+.cartouche-day {
+  spacing: 3px;
+  padding: 3px 0 4px 0;
+  border-radius: 9px;
+}
+.cartouche-day-letter {
+  font-size: 7.5pt;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.45);
+}
+.cartouche-day-number {
+  font-size: 9.5pt;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.85);
+}
+.cartouche-day:today {
+  background-color: #ff453a;
+}
+.cartouche-day:today .cartouche-day-letter,
+.cartouche-day:today .cartouche-day-number {
+  color: #fff;
+  font-weight: bold;
+}
+.cartouche-day:busy .cartouche-day-number {
+  text-decoration: underline;
+}
+.cartouche-events {
+  spacing: 4px;
+}
+.cartouche-event {
+  spacing: 7px;
+}
+.cartouche-event-dot {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: #ff9f0a;
+}
+.cartouche-event-time {
+  font-size: 8.5pt;
+  font-weight: bold;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 40px;
+}
+.cartouche-event-title {
+  font-size: 9.5pt;
+}
+.cartouche-no-events {
+  padding-top: 2px;
+}
+
+.cartouche-footer {
+  spacing: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cartouche-battery {
+  spacing: 5px;
+}
+.cartouche-footer-icon {
+  icon-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+}

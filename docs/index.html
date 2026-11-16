@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cartouche: a Dynamic Island for GNOME</title>
+<meta name="description" content="Cartouche turns the clock in the GNOME top bar into a Dynamic Island: what is playing, volume and brightness, notifications, charging, headphones, Do Not Disturb and a glance at your day. Free and open source, for GNOME 45 to 51.">
+<meta name="theme-color" content="#121212">
+<link rel="canonical" href="https://dabane-ghassan.github.io/cartouche/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cartouche: a Dynamic Island for GNOME">
+<meta property="og:description" content="The clock in the top bar becomes a living pill: music, volume, notifications, charging, headphones and your day.">
+<meta property="og:image" content="https://dabane-ghassan.github.io/cartouche/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --papyrus: #F1E6CC;
+  --ink: #121212;
+  --soft: rgba(18, 18, 18, .64);
+  --gold: #D99A2B;
+  --lapis: #2B59C3;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --text: "Instrument Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", Menlo, monospace;
+  --spring: cubic-bezier(.34, 1.42, .64, 1);
+  --settle: cubic-bezier(.22, 1, .36, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--papyrus); color: var(--ink); font: 400 17px/1.55 var(--text); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 28px); }
+
+nav { display: flex; align-items: center; gap: 10px; height: 68px; }
+nav img { width: 34px; height: 34px; border-radius: 9px; }
+nav strong { font: 800 19px/1 var(--display); letter-spacing: -.02em; }
+nav a { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 15px; text-decoration: none; padding: 9px 14px; border-radius: 999px; }
+nav a:hover { background: rgba(18, 18, 18, .07); }
+nav svg { width: 18px; height: 18px; fill: currentColor; }
+
+.stage {
+  position: relative; overflow: hidden; border-radius: clamp(22px, 3vw, 38px);
+  background: var(--lapis); color: #fff;
+  min-height: min(780px, calc(100vh - 96px)); padding: 260px clamp(20px, 5vw, 64px) 110px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+}
+.stage::before, .stage::after { content: ""; position: absolute; border-radius: 50%; pointer-events: none; }
+.stage::before { width: 62vmax; height: 62vmax; left: -22vmax; bottom: -40vmax; background: #244FB3; }
+.stage::after { width: 40vmax; height: 40vmax; right: -14vmax; top: -24vmax; background: #3566D4; }
+.stage > * { position: relative; z-index: 1; }
+.bar { position: absolute; z-index: 3; left: 0; right: 0; top: 0; height: 32px; background: #000; display: flex; align-items: center; font: 600 13px/1 var(--text); }
+.bar .left { position: absolute; left: 14px; width: 30px; height: 8px; border-radius: 4px; background: #fff; }
+.bar .left::after { content: ""; position: absolute; left: 36px; top: 1px; width: 6px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.5); }
+.bar .right { position: absolute; right: 16px; opacity: .85; letter-spacing: .1em; }
+
+/* ---------------- the island ---------------- */
+.island {
+  position: absolute; z-index: 4; top: 3px; left: 50%; transform: translateX(-50%);
+  width: 132px; height: 26px; border-radius: 13px; background: #000; color: #fff; overflow: hidden;
+  transition: width .46s var(--spring), height .46s var(--spring), border-radius .46s var(--spring);
+  cursor: pointer; text-align: left; max-width: calc(100% - 12px);
+}
+.island.shrink { transition: width .34s var(--settle), height .34s var(--settle), border-radius .34s var(--settle); }
+.view { position: absolute; top: 0; left: 50%; transform: translateX(-50%); opacity: 0; pointer-events: none; transition: opacity .16s ease; white-space: nowrap; }
+.view.on { opacity: 1; pointer-events: auto; transition: opacity .22s ease .07s; }
+.compact { height: 26px; display: flex; align-items: center; gap: 9px; padding: 0 14px; font: 700 13px/1 var(--text); font-variant-numeric: tabular-nums; }
+.compact.media { padding: 0 9px 0 4px; }
+.art { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, #ff5e3a, #ffb02e); flex: none; display: none; position: relative; overflow: hidden; }
+.art::after { content: ""; position: absolute; inset: 55% -10% -10% -10%; background: #8a2be2; opacity: .55; transform: skewY(-18deg); }
+.compact.media .art, .big .art, .act .art { display: block; }
+.bars { display: none; gap: 2px; align-items: center; height: 14px; }
+.compact.media .bars, .bars.show { display: flex; }
+.bars i { width: 3px; height: 14px; border-radius: 2px; background: #ff9a3c; transform: scaleY(.3); transition: transform .17s ease-in-out; }
+
+.hud { height: 34px; width: 290px; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 13px; font: 700 12.5px/1 var(--text); }
+.hud svg { width: 16px; height: 16px; fill: #fff; flex: none; }
+.level { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; }
+.level b { display: block; height: 100%; width: 40%; background: #fff; border-radius: 3px; transition: width .12s ease-out; }
+.hud span { min-width: 38px; text-align: right; color: rgba(255,255,255,.85); }
+
+.act { height: 48px; width: 330px; display: flex; align-items: center; gap: 11px; padding: 0 16px 0 7px; }
+.act .lead { width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; flex: none; }
+.act .lead svg { width: 17px; height: 17px; fill: #fff; }
+.act .art { width: 34px; height: 34px; border-radius: 9px; }
+.act .txt { flex: 1; min-width: 0; }
+.act b, .note b, .big b { display: block; font: 700 14px/1.25 var(--text); overflow: hidden; text-overflow: ellipsis; }
+.act i, .big i { display: block; font: 400 12.5px/1.3 var(--text); font-style: normal; color: rgba(255,255,255,.62); overflow: hidden; text-overflow: ellipsis; }
+.act em { font: 700 14px/1 var(--text); font-style: normal; font-variant-numeric: tabular-nums; }
+
+.note { width: 420px; padding: 12px 12px 13px 13px; display: flex; gap: 11px; white-space: normal; }
+.note .icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.1); display: grid; place-items: center; flex: none; }
+.note .icon svg { width: 22px; height: 22px; fill: #fff; }
+.note small { display: flex; justify-content: space-between; font: 400 11px/1.4 var(--text); color: rgba(255,255,255,.55); }
+.note p { margin: 1px 0 0; font: 400 12.5px/1.4 var(--text); color: rgba(255,255,255,.75); }
+
+.big { width: 600px; padding: 16px 18px 14px; white-space: normal; }
+.big .row { display: flex; gap: 18px; }
+.big .player { width: 300px; }
+.big .top { display: flex; gap: 13px; align-items: center; }
+.big .top .art { width: 64px; height: 64px; border-radius: 13px; }
+.big .progress { display: flex; align-items: center; gap: 9px; margin: 10px 0 4px; font: 400 11px/1 var(--text); color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
+.big .track { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; }
+.big .track b { display: block; height: 100%; width: 22%; background: #fff; }
+.big .controls { display: flex; justify-content: center; gap: 24px; padding-top: 4px; }
+.big .controls svg { width: 20px; height: 20px; fill: #fff; }
+.big .controls .main svg { width: 26px; height: 26px; }
+.big .divider { width: 1px; background: rgba(255,255,255,.1); }
+.big .cal { width: 236px; }
+.big .cal small { color: #ff453a; font: 700 11px/1.4 var(--text); }
+.big .cal strong { display: block; font: 700 17px/1.3 var(--text); }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin: 8px 0 6px; font: 400 12px/1 var(--text); }
+.week span { padding: 4px 0 5px; border-radius: 9px; color: rgba(255,255,255,.85); }
+.week span::before { content: attr(data-d); display: block; font: 700 9.5px/1 var(--text); color: rgba(255,255,255,.45); margin-bottom: 4px; }
+.week .today { background: #ff453a; color: #fff; font-weight: 700; }
+.week .today::before { color: #fff; }
+.ev { display: flex; gap: 7px; align-items: center; font: 400 12.5px/1.6 var(--text); }
+.ev::before { content: ""; width: 3px; height: 14px; border-radius: 2px; background: #ff9f0a; }
+.ev time { font-weight: 700; font-size: 11px; color: rgba(255,255,255,.6); min-width: 40px; }
+.foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); font: 400 11px/1 var(--text); color: rgba(255,255,255,.55); }
+.foot .chip { width: 28px; height: 28px; border-radius: 14px; background: rgba(255,255,255,.08); display: grid; place-items: center; }
+.foot .chip svg { width: 14px; height: 14px; fill: #fff; }
+.foot .grow { flex: 1; }
+
+h1 { margin: 0; max-width: 14ch; font: 800 clamp(44px, 8.4vw, 112px)/.92 var(--display); letter-spacing: -.045em; text-wrap: balance; }
+.lede { max-width: 38ch; margin: 22px auto 0; font-size: clamp(17px, 2vw, 21px); color: rgba(255,255,255,.86); }
+.cmd { margin-top: 30px; display: flex; align-items: center; gap: 6px; max-width: 100%; background: rgba(0,0,0,.28); padding: 6px 6px 6px 18px; border-radius: 999px; }
+.cmd code { font: 500 14px/1.2 var(--mono); white-space: nowrap; overflow: auto; scrollbar-width: none; }
+.cmd button, .try button { font: 600 14px/1 var(--text); border: 0; border-radius: 999px; padding: 11px 16px; cursor: pointer; }
+.cmd button { background: #fff; color: var(--ink); }
+.fine { margin: 14px 0 0; font-size: 14px; color: rgba(255,255,255,.7); }
+.try { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 26px; }
+.try button { background: rgba(255,255,255,.14); color: #fff; }
+.try button:hover { background: rgba(255,255,255,.24); }
+
+.does { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+.does div { background: #fff8e6; border-radius: 24px; padding: 24px; }
+.does .ico { font-size: 26px; }
+.does h2 { margin: 8px 0 4px; font: 800 22px/1.1 var(--display); letter-spacing: -.02em; }
+.does p { margin: 0; color: var(--soft); }
+.more { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+.more > div { background: #fff8e6; border-radius: 24px; padding: 28px; }
+.more h2 { margin: 0 0 12px; font: 800 26px/1.1 var(--display); letter-spacing: -.02em; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; margin: 0; }
+dt { font-weight: 600; white-space: nowrap; }
+dd { margin: 0; color: var(--soft); }
+kbd { font: 600 13px/1 var(--mono); background: var(--ink); color: #fff; padding: 4px 7px; border-radius: 6px; }
+ul { margin: 0; padding-left: 18px; }
+li { margin: 0 0 10px; color: var(--soft); }
+li strong { color: var(--ink); }
+code { font: 500 .88em var(--mono); }
+.name { margin: 14px 0; background: var(--ink); color: var(--papyrus); border-radius: 24px; padding: 28px clamp(22px, 4vw, 44px); display: grid; grid-template-columns: auto 1fr; gap: 26px; align-items: center; }
+.name svg { width: 150px; height: 64px; }
+.name h2 { margin: 0 0 6px; font: 800 26px/1.1 var(--display); }
+.name p { margin: 0; color: rgba(241,230,204,.75); }
+footer { padding: 24px 0 48px; text-align: center; font-size: 14px; color: var(--soft); }
+footer p { margin: 4px 0; }
+@media (max-width: 860px) {
+  .does, .more { grid-template-columns: 1fr; }
+  .name { grid-template-columns: 1fr; }
+  .stage { padding-top: 230px; }
+}
+@media (max-width: 680px) {
+  .big { transform: scale(.62); transform-origin: top center; }
+  .note { width: 340px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island, .island.shrink, .view, .view.on { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <img src="assets/logo.svg" alt="">
+    <strong>Cartouche</strong>
+    <a href="https://github.com/dabane-ghassan/cartouche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.39-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>Source</a>
+  </nav>
+  <main>
+    <section class="stage" id="stage">
+      <div class="bar"><span class="left"></span><span class="right">⏻</span></div>
+      <div class="island" id="island" role="button" tabindex="0" aria-label="The island. Hover or click to open it." aria-live="polite">
+        <div class="view compact on" id="v-compact"><span class="art"></span><span id="clock">Mon 09:41</span><span class="bars" id="bars"><i></i><i></i><i></i><i></i></span></div>
+        <div class="view hud" id="v-hud"><svg viewBox="0 0 16 16"><path id="hud-icon" d="M2 6h3l4-3v10L5 10H2z M11 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6 6 0 0 1 0 9" stroke="#fff" stroke-width="1.3" fill="#fff"/></svg><span class="level"><b id="hud-level"></b></span><span id="hud-pct">40%</span></div>
+        <div class="view act" id="v-act"><span class="lead" id="act-lead"></span><span class="art" id="act-art"></span><span class="txt"><b id="act-title"></b><i id="act-sub"></i></span><em id="act-trail"></em><span class="bars show" id="act-bars"><i></i><i></i><i></i><i></i></span></div>
+        <div class="view note" id="v-note"><span class="icon"><svg viewBox="0 0 24 24"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5zm2.2-.3 6.8 5.3 6.8-5.3z"/></svg></span><span style="flex:1;min-width:0"><small><span>Mail</span><span>now</span></small><b>Ghassan</b><p>Lunch tomorrow at the lab? I found a place near the Vieux-Port that does great socca.</p></span></div>
+        <div class="view big" id="v-big">
+          <div class="row">
+            <div class="player">
+              <div class="top"><span class="art"></span><span style="min-width:0;flex:1"><b>Nile at Night</b><i>The Scribes — Papyrus</i><i style="font-size:11px;margin-top:4px">Spotify</i></span><span class="bars show" id="big-bars"><i></i><i></i><i></i><i></i></span></div>
+              <div class="progress"><span>0:47</span><span class="track"><b></b></span><span>-2:47</span></div>
+              <div class="controls"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zm3.5 7L19 5v14z"/></svg><span class="main"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg></span><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM5 5l9.5 7L5 19z"/></svg></div>
+            </div>
+            <span class="divider"></span>
+            <div class="cal"><small id="weekday">MONDAY</small><strong id="today">16 November</strong>
+              <div class="week" id="week"></div>
+              <div class="ev"><time>11:00</time>Lab meeting</div>
+              <div class="ev"><time>13:30</time>Lunch, Vieux-Port</div>
+            </div>
+          </div>
+          <div class="foot"><span>🔋 82%</span><span class="grow"></span><span class="chip"><svg viewBox="0 0 16 16"><path d="M8 1.5a4 4 0 0 0-4 4V9L2.5 11h11L12 9V5.5a4 4 0 0 0-4-4zM6.5 13a1.5 1.5 0 0 0 3 0z"/></svg></span><span class="chip"><svg viewBox="0 0 16 16"><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM7 1h2l.4 1.8 1.6.7 1.6-1 1.4 1.4-1 1.6.7 1.6L15 7v2l-1.8.4-.7 1.6 1 1.6-1.4 1.4-1.6-1-1.6.7L9 15H7l-.4-1.8-1.6-.7-1.6 1L2 12.1l1-1.6-.7-1.6L.5 9V7l1.8-.4.7-1.6-1-1.6L3.4 2l1.6 1 1.6-.7z"/></svg></span></div>
+        </div>
+      </div>
+      <h1>A Dynamic Island for GNOME.</h1>
+      <p class="lede">The clock in the top bar becomes a living pill: what is playing, volume and brightness, notifications, charging, headphones, and a glance at your day.</p>
+      <div class="cmd">
+        <code id="cmd">curl -fsSL https://dabane-ghassan.github.io/cartouche/install.sh | sh</code>
+        <button type="button" id="copy">Copy</button>
+      </div>
+      <p class="fine">Paste it in a terminal, then log out and back in once. Version 1.0.0, free and open source, for GNOME 45 to 51 on any distro.</p>
+      <div class="try" aria-label="Try it">
+        <button type="button" data-try="music">▶ Play music</button>
+        <button type="button" data-try="volume">🔊 Volume up</button>
+        <button type="button" data-try="note">✉️ A notification</button>
+        <button type="button" data-try="charge">🔌 Plug in</button>
+        <button type="button" data-try="pods">🎧 Headphones</button>
+        <button type="button" data-try="open">Open it</button>
+      </div>
+    </section>
+
+    <section class="does" aria-label="What it does">
+      <div><span class="ico">🎵</span><h2>Now playing</h2><p>Album art and bars around the clock, in the colour of the cover. Open it for the player: seek, skip, pause. Any app that speaks MPRIS.</p></div>
+      <div><span class="ico">🔊</span><h2>Volume and brightness</h2><p>GNOME's pop-up in the middle of the screen moves up into the island. Keyboard light and microphone too, as a bar or sixteen segments.</p></div>
+      <div><span class="ico">💬</span><h2>Notifications</h2><p>They drop into the island instead of a banner, and still land in GNOME's list. Click to open, swipe up to put away.</p></div>
+      <div><span class="ico">🔌</span><h2>Charging, headphones</h2><p>Plugging in, a full or low battery, AirPods and other Bluetooth devices connecting, with their battery.</p></div>
+      <div><span class="ico">📅</span><h2>Your day</h2><p>Open it for the week, your next events from GNOME's calendar, battery, and a Do Not Disturb switch.</p></div>
+      <div><span class="ico">🔒</span><h2>Lock screen</h2><p>What is playing, and volume and brightness, stay on the lock screen. Notifications and your calendar never do.</p></div>
+    </section>
+
+    <section class="more">
+      <div class="keys">
+        <h2>Hands on</h2>
+        <dl>
+          <dt>Rest the pointer on it</dt><dd>It opens. Move away and it closes.</dd>
+          <dt>Click</dt><dd>Opens it. On a notification, opens the app.</dd>
+          <dt>Swipe down · up</dt><dd>Open · put away what it shows.</dd>
+          <dt>Swipe sideways</dt><dd>Next or previous song.</dd>
+          <dt>Middle-click</dt><dd>Closes a notification for good.</dd>
+          <dt>Right-click · <kbd>Super</kbd> <kbd>V</kbd></dt><dd>GNOME's notification list and calendar, as before.</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>I</kbd></dt><dd>Open or close it from the keyboard.</dd>
+          <dt><kbd>cartouche</kbd></dt><dd><code>open</code>, <code>next</code>, <code>play</code>, <code>state</code>, <code>settings</code>, <code>update</code>.</dd>
+        </dl>
+      </div>
+      <div class="setup">
+        <h2>Good to know</h2>
+        <ul>
+          <li><strong>It is the clock.</strong> Same format as GNOME's (date, weekday, seconds, 12 or 24 hours), and turning Cartouche off gives the old clock back exactly.</li>
+          <li><strong>Out of the way.</strong> Over a fullscreen video, GNOME's own pop-ups show as usual. Do Not Disturb is respected.</li>
+          <li><strong>Private.</strong> No account, no analytics. Album art is fetched from where the player says it is, and kept in <code>~/.cache/cartouche</code>.</li>
+          <li><strong>Every GNOME from 45 to 51</strong>, on Fedora, Ubuntu, Debian, Arch and the rest. Settings in the Extensions app.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="name">
+      <svg viewBox="0 0 150 64" aria-hidden="true"><rect x="2" y="8" width="130" height="48" rx="24" fill="none" stroke="#F1E6CC" stroke-width="4"/><line x1="142" y1="12" x2="142" y2="52" stroke="#F1E6CC" stroke-width="5" stroke-linecap="round"/><circle cx="30" cy="32" r="8" fill="#D99A2B"/><path d="M48 24h14M48 32h20M48 40h10" stroke="#F1E6CC" stroke-width="3" stroke-linecap="round"/><path d="M80 22v20M90 26v12M100 20v24M110 28v8" stroke="#D99A2B" stroke-width="4" stroke-linecap="round"/></svg>
+      <div>
+        <h2>Why “cartouche”?</h2>
+        <p>In Egyptian hieroglyphs, a cartouche is the oval drawn around a name, tied off with a line at one end, so that it stands out from everything around it. Champollion found his way into the Rosetta Stone by reading the names inside them. This one holds the time, and whatever matters right now.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <p>A GNOME take on <a href="https://tryalcove.com/">Alcove</a> for the Mac. From the maker of <a href="https://dabane-ghassan.github.io/manicule/">Manicule</a> and <a href="https://dabane-ghassan.github.io/festoon/">Festoon</a>.</p>
+    <p><a href="https://github.com/dabane-ghassan/cartouche">Source on GitHub</a> · MIT license</p>
+  </footer>
+</div>
+<script>
+(() => {
+  const island = document.getElementById('island');
+  const views = {compact: 'v-compact', hud: 'v-hud', act: 'v-act', note: 'v-note', big: 'v-big'};
+  const $ = id => document.getElementById(id);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let current = 'compact', playing = false, peekTimer = 0, barsTimer = 0, volume = 0.4, hovering = false, hoverTimer = 0;
+
+  const clock = () => {
+    const d = new Date();
+    $('clock').textContent = d.toLocaleDateString('en', {weekday: 'short'}) + ' ' + d.toTimeString().slice(0, 5);
+    $('weekday').textContent = d.toLocaleDateString('en', {weekday: 'long'}).toUpperCase();
+    $('today').textContent = d.toLocaleDateString('en', {day: 'numeric', month: 'long'});
+    const week = $('week'); week.innerHTML = '';
+    const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday); day.setDate(monday.getDate() + i);
+      const s = document.createElement('span');
+      s.dataset.d = day.toLocaleDateString('en', {weekday: 'narrow'});
+      s.textContent = day.getDate();
+      if (day.toDateString() === d.toDateString()) s.className = 'today';
+      week.appendChild(s);
+    }
+  };
+  clock(); setInterval(clock, 30000);
+
+  function size(name) {
+    const el = $(views[name]);
+    return [el.offsetWidth, el.offsetHeight];
+  }
+
+  function show(name) {
+    const [w0, h0] = [island.offsetWidth, island.offsetHeight];
+    for (const [k, id] of Object.entries(views)) $(id).classList.toggle('on', k === name);
+    current = name;
+    const [w, h] = size(name);
+    island.classList.toggle('shrink', w * h < w0 * h0);
+    island.style.width = w + 'px';
+    island.style.height = h + 'px';
+    island.style.borderRadius = Math.min(h / 2, 26) + 'px';
+  }
+
+  function peek(name, ms) {
+    clearTimeout(peekTimer);
+    show(name);
+    peekTimer = setTimeout(() => { if (!hovering) show('compact'); else peekTimer = 0; }, ms);
+  }
+
+  function animateBars() {
+    document.querySelectorAll('.bars i').forEach((bar, i) => {
+      const centre = i % 4 === 1 || i % 4 === 2 ? .25 : 0;
+      bar.style.transform = `scaleY(${playing ? Math.min(1, .22 + centre + Math.random() * .75) : .3})`;
+    });
+  }
+
+  function setPlaying(on) {
+    playing = on;
+    $('v-compact').classList.toggle('media', on);
+    clearInterval(barsTimer);
+    if (on && !reduced) barsTimer = setInterval(animateBars, 170);
+    animateBars();
+    if (current === 'compact') show('compact');
+  }
+
+  function activity(lead, title, sub, trail, color) {
+    const leadEl = $('act-lead');
+    $('act-art').style.display = lead === 'art' ? 'block' : 'none';
+    leadEl.style.display = lead === 'art' ? 'none' : 'grid';
+    leadEl.style.background = color || '#3a3a3c';
+    leadEl.innerHTML = lead === 'art' ? '' : lead;
+    $('act-title').textContent = title;
+    $('act-sub').textContent = sub || '';
+    $('act-trail').textContent = trail || '';
+    $('act-trail').style.color = trail && color && lead !== 'art' ? color : '#fff';
+    $('act-trail').style.display = trail ? 'block' : 'none';
+    $('act-bars').style.display = lead === 'art' ? 'flex' : 'none';
+    peek('act', 2800);
+  }
+
+  const ICON = {
+    bolt: '<svg viewBox="0 0 16 16"><path d="M9 1 3 9h4l-1 6 6-8H8z"/></svg>',
+    pods: '<svg viewBox="0 0 16 16"><path d="M4 2a3 3 0 0 1 3 3v6a2 2 0 0 1-4 0V8.5A3 3 0 0 1 4 2zm8 0a3 3 0 0 0-3 3v6a2 2 0 0 0 4 0V8.5A3 3 0 0 0 12 2z"/></svg>',
+  };
+
+  const actions = {
+    music: () => {
+      setPlaying(!playing);
+      if (playing) activity('art', 'Nile at Night', 'The Scribes', '', null);
+      document.querySelector('[data-try="music"]').textContent = playing ? '⏸ Pause music' : '▶ Play music';
+    },
+    volume: () => {
+      volume = volume >= 1 ? 0.1 : Math.min(1, volume + 0.15);
+      $('hud-level').style.width = (volume * 100) + '%';
+      $('hud-pct').textContent = Math.round(volume * 100) + '%';
+      peek('hud', 1600);
+    },
+    note: () => peek('note', 5000),
+    charge: () => activity(ICON.bolt, 'Charging', '', '82%', '#30d158'),
+    pods: () => activity(ICON.pods, 'AirPods Pro', 'Connected', '87%', '#0a84ff'),
+    open: () => { clearTimeout(peekTimer); show(current === 'big' ? 'compact' : 'big'); },
+  };
+  document.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => actions[b.dataset.try]()));
+
+  island.addEventListener('mouseenter', () => {
+    hovering = true;
+    clearTimeout(hoverTimer);
+    if (current === 'compact') hoverTimer = setTimeout(() => hovering && show('big'), 220);
+  });
+  island.addEventListener('mouseleave', () => {
+    hovering = false;
+    clearTimeout(hoverTimer);
+    if (current === 'big') hoverTimer = setTimeout(() => show('compact'), 280);
+    else if (current !== 'compact' && !peekTimer) peekTimer = setTimeout(() => show('compact'), 1800);
+  });
+  island.addEventListener('click', () => { if (current !== 'big') { clearTimeout(peekTimer); show('big'); } });
+  island.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.open(); } });
+
+  $('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('cmd').textContent); $('copy').textContent = 'Copied'; }
+    catch (_e) { getSelection().selectAllChildren($('cmd')); }
+    setTimeout(() => { $('copy').textContent = 'Copy'; }, 1500);
+  });
+
+  show('compact');
+  if (!reduced) setTimeout(() => actions.music(), 1200);
+})();
+</script>
+</body>
+</html>

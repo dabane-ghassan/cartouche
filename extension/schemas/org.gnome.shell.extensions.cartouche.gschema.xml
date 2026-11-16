@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.cartouche" path="/org/gnome/shell/extensions/cartouche/">
+
+    <!-- the island -->
+    <key name="expand-on-hover" type="b">
+      <default>true</default>
+      <summary>Open the island when the pointer rests on it</summary>
+      <description>Otherwise, click it (or press the shortcut) to open it.</description>
+    </key>
+    <key name="hover-delay" type="i">
+      <range min="0" max="2000"/>
+      <default>220</default>
+      <summary>How long the pointer rests on the island before it opens, in milliseconds</summary>
+    </key>
+    <key name="appearance" type="s">
+      <choices>
+        <choice value="black"/><choice value="graphite"/>
+      </choices>
+      <default>'black'</default>
+      <summary>The island's colour: true black, or the dark grey of GNOME's menus</summary>
+    </key>
+    <key name="lock-screen" type="b">
+      <default>true</default>
+      <summary>Show what is playing, and volume and brightness, on the lock screen</summary>
+    </key>
+
+    <!-- live activities -->
+    <key name="media" type="b">
+      <default>true</default>
+      <summary>Show what is playing</summary>
+    </key>
+    <key name="media-compact" type="s">
+      <choices>
+        <choice value="artwork"/><choice value="title"/><choice value="clock"/>
+      </choices>
+      <default>'artwork'</default>
+      <summary>While music plays, the pill shows the artwork around the clock, the song title, or just the clock</summary>
+    </key>
+    <key name="track-peek" type="b">
+      <default>true</default>
+      <summary>Show the new song for a moment when the track changes</summary>
+    </key>
+    <key name="visualizer-color" type="s">
+      <choices>
+        <choice value="artwork"/><choice value="white"/>
+      </choices>
+      <default>'artwork'</default>
+      <summary>Colour of the bars: taken from the album art, or white</summary>
+    </key>
+    <key name="notifications" type="b">
+      <default>true</default>
+      <summary>Show notifications in the island instead of banners</summary>
+    </key>
+    <key name="notification-time" type="i">
+      <range min="2" max="30"/>
+      <default>5</default>
+      <summary>How long a notification stays, in seconds</summary>
+    </key>
+    <key name="battery" type="b">
+      <default>true</default>
+      <summary>Announce charging, a full battery, and a low battery</summary>
+    </key>
+    <key name="low-battery" type="i">
+      <range min="5" max="50"/>
+      <default>20</default>
+      <summary>Warn when the battery falls to this percentage (and again at 10% and 5%)</summary>
+    </key>
+    <key name="bluetooth" type="b">
+      <default>true</default>
+      <summary>Announce headphones and other Bluetooth devices connecting</summary>
+    </key>
+    <key name="focus" type="b">
+      <default>true</default>
+      <summary>Announce Do Not Disturb going on and off</summary>
+    </key>
+    <key name="calendar" type="b">
+      <default>true</default>
+      <summary>Show the week and your next events when the island is open</summary>
+    </key>
+
+    <!-- HUDs -->
+    <key name="hud-volume" type="b">
+      <default>true</default>
+      <summary>Show volume changes in the island</summary>
+    </key>
+    <key name="hud-brightness" type="b">
+      <default>true</default>
+      <summary>Show screen brightness changes in the island</summary>
+    </key>
+    <key name="hud-keyboard" type="b">
+      <default>true</default>
+      <summary>Show keyboard backlight changes in the island</summary>
+    </key>
+    <key name="hud-microphone" type="b">
+      <default>true</default>
+      <summary>Show microphone changes in the island</summary>
+    </key>
+    <key name="hud-other" type="b">
+      <default>true</default>
+      <summary>Show GNOME's other pop-ups (airplane mode, touchpad, and the like) in the island</summary>
+    </key>
+    <key name="hud-style" type="s">
+      <choices>
+        <choice value="bar"/><choice value="segments"/>
+      </choices>
+      <default>'bar'</default>
+      <summary>A smooth bar, or sixteen segments</summary>
+    </key>
+    <key name="hud-percent" type="b">
+      <default>true</default>
+      <summary>Show the level as a percentage too</summary>
+    </key>
+
+    <!-- shortcut -->
+    <key name="toggle-shortcut" type="as">
+      <default><![CDATA[['<Control><Alt>i']]]></default>
+      <summary>Open the island, or close it</summary>
+    </key>
+  </schema>
+</schemalist>
