@@ -143,7 +143,8 @@ def run(rig, r):
     r.check("the extension is enabled", rig.js(f"{EXT}.state") == 1)
     st = c.state()
     r.check("it answers on D-Bus, at rest", st["mode"] == "compact" and st["visible"], st)
-    r.check("GNOME's clock is hidden", rig.js("Main.panel.statusArea.dateMenu._clockDisplay.get_parent().visible === false"))
+    r.check("GNOME's clock is hidden", rig.js("Main.panel.statusArea.dateMenu.opacity === 0"))
+    r.check("its place in the top bar is as wide as the pill", rig.js(f"Main.panel.statusArea.dateMenu._clockDisplay.get_parent().width === {C}.compact.actor.get_preferred_width(-1)[1]"))
     r.check("GNOME's date button is still there for its menu and Super+V",
             rig.js("Main.panel.statusArea.dateMenu.mapped && Main.panel.statusArea.dateMenu.reactive"))
     r.check("the pill shows GNOME's clock text", st["compact"] == rig.js("Main.panel.statusArea.dateMenu._clock.clock"), st["compact"])
@@ -367,6 +368,30 @@ def run(rig, r):
     r.check("or just the clock", not rig.js(f"{C}.compact._art.visible"))
     rig.js(f"{C}._settings.reset('media-compact'); 1")
 
+    print("a crowded top bar")
+    c.settle()
+    rig.js("global._crowd = new imports.gi.St.Widget({width: 10, height: 10}); Main.panel._rightBox.insert_child_at_index(global._crowd, 0); 1")
+    def overlap():
+        return rig.js(f"""(() => {{ const i = {C}.island; const [ix] = i.get_transformed_position(); const x1 = ix, x2 = ix + i.width;
+            const [rx] = Main.panel._rightBox.get_transformed_position(); const [lx] = Main.panel._leftBox.get_transformed_position();
+            return {{x1, x2, right: rx, left: lx + Main.panel._leftBox.width, art: {C}.compact._art.visible, bars: {C}.compact._bars.visible}}; }})()""")
+    # Widths of the pill with and without its bars, and the room each crowd leaves it.
+    full = rig.js(f"{C}.compact.actor.get_preferred_width(-1)[1]")
+    bars_w = rig.js(f"{C}.compact._bars.get_preferred_width(-1)[1] + {C}.compact.actor.get_theme_node().get_length('spacing')")
+    room0 = rig.js(f"{C}._room() + 2 * global._crowd.width")
+    def crowd_for(room):
+        return int((room0 - room) / 2)
+    for width, art, bars in [(crowd_for(full + 40), True, True), (crowd_for(full - bars_w / 2), True, False), (crowd_for(60), False, False)]:
+        rig.js(f"global._crowd.width = {width}; 1")
+        time.sleep(1.2)
+        o = overlap()
+        r.check(f"with {width}px more icons, the pill never covers them", o["x2"] <= o["right"] + 1 and o["x1"] >= o["left"] - 1, o)
+        r.check(f"  and keeps {'the artwork' if art else 'just the clock'}{' and bars' if bars else ''}", o["art"] == art and o["bars"] == bars, o)
+    rig.js("global._crowd.destroy(); 1")
+    time.sleep(1.0)
+    o = overlap()
+    r.check("with room again, the artwork and bars come back", o["art"] and o["bars"], o)
+
     print("battery, headphones")
     c.settle()
     rig.js(f"{C}.power.simulate(54, 2); {C}.power.simulate(55, 1); 1")
@@ -432,7 +457,7 @@ def run(rig, r):
     c.settle()
     rig.js(f"Main.extensionManager.disableExtension('{UUID}'); 1")
     time.sleep(0.8)
-    r.check("disabled, GNOME's clock is back", rig.js("Main.panel.statusArea.dateMenu._clockDisplay.get_parent().visible && Main.panel.statusArea.dateMenu.opacity === 255"))
+    r.check("disabled, GNOME's clock is back", rig.js("!Main.panel.statusArea.dateMenu._clockDisplay.get_parent().natural_width_set && Main.panel.statusArea.dateMenu.opacity === 255"))
     r.check("GNOME's OSD is GNOME's again", rig.js("!Object.prototype.hasOwnProperty.call(Main.osdWindowManager, '_showOsdWindow')"))
     r.check("GNOME's banners too", rig.js("!Object.prototype.hasOwnProperty.call(Main.messageTray, '_showNotification')"))
     r.check("nothing of the island is left", rig.js("!Main.layoutManager.uiGroup.get_children().some(a => a.name === 'cartoucheStage')"))
@@ -440,7 +465,7 @@ def run(rig, r):
     c.shot("17-disabled")
     rig.js(f"Main.extensionManager.enableExtension('{UUID}'); 1")
     time.sleep(1.0)
-    r.check("enabled again, it works", c.state()["mode"] == "compact" and rig.js("Main.panel.statusArea.dateMenu._clockDisplay.get_parent().visible === false"))
+    r.check("enabled again, it works", c.state()["mode"] == "compact" and rig.js("Main.panel.statusArea.dateMenu.opacity === 0"))
     c.osd("audio-volume-medium-symbolic", 0.5)
     r.check("and catches the OSD again", c.wait(lambda: c.peek() == "hud", 2))
     c.settle()

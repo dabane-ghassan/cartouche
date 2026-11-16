@@ -62,6 +62,7 @@ export const Island = GObject.registerClass({
             y_align: Clutter.ActorAlign.START,
         });
         this._top = 0;
+        this._offset = 0;
         this._view = null;
         this._persistent = new Set();
         this._target = [0, 0];
@@ -90,6 +91,17 @@ export const Island = GObject.registerClass({
             this.remove_style_class_name(`cartouche-${this._appearance}`);
         this._appearance = name;
         this.add_style_class_name(`cartouche-${name}`);
+    }
+
+    /** Horizontal distance from the middle of the screen, kept inside it whatever the size. */
+    setOffset(offset) {
+        this._offset = offset;
+        this._applyOffset();
+    }
+
+    _applyOffset() {
+        const room = Math.max(0, ((this.get_parent()?.width ?? 0) - this._target[0]) / 2);
+        this.translation_x = Math.max(-room, Math.min(room, this._offset));
     }
 
     /**
@@ -151,6 +163,7 @@ export const Island = GObject.registerClass({
         if (width === w0 && height === h0)
             return;
         this._target = [width, height];
+        this._applyOffset();
         if (!animate || !animations() || !this.mapped || !w0) {
             this.remove_transition('width');
             this.remove_transition('height');
@@ -180,12 +193,13 @@ export const Island = GObject.registerClass({
         if (!animations())
             return;
         this.remove_transition('translation-x');
-        this.translation_x = 0;
+        this._applyOffset();
+        const base = this.translation_x;
         const steps = [6, -5, 3, -2, 0];
         const next = i => {
             if (i >= steps.length)
                 return;
-            this.ease({translation_x: steps[i] * this._scale, duration: 55, mode: Clutter.AnimationMode.EASE_OUT_QUAD, onComplete: () => next(i + 1)});
+            this.ease({translation_x: base + steps[i] * this._scale, duration: 55, mode: Clutter.AnimationMode.EASE_OUT_QUAD, onComplete: () => next(i + 1)});
         };
         next(0);
     }

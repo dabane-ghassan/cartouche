@@ -2,7 +2,7 @@
   "uuid": "cartouche@dabane-ghassan.github.io",
   "name": "Cartouche",
   "description": "A Dynamic Island for GNOME. The clock in the top bar becomes a living pill: what is playing, volume and brightness, notifications, charging, headphones, Do Not Disturb, and a glance at your day. Rest the pointer on it to open it up.",
-  "version-name": "1.0.0",
+  "version-name": "1.0.1",
   "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
   "url": "https://github.com/dabane-ghassan/cartouche",
   "settings-schema": "org.gnome.shell.extensions.cartouche",

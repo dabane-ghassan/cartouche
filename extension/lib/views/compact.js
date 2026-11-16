@@ -35,12 +35,13 @@ export class CompactView {
      * dot: unread notifications
      * media: null, or {uri, accent, playing}
      * title: whether the text is a track title (it gets a width limit)
+     * bars: whether the bars fit (false on a crowded top bar)
      */
-    update({text, dot, media, title}) {
+    update({text, dot, media, title, bars = true}) {
         this._label.text = text;
         const withMedia = !!media;
         this._art.visible = withMedia;
-        this._bars.visible = withMedia;
+        this._bars.visible = withMedia && bars;
         this._dot.visible = !!dot && !withMedia;
         if (withMedia) {
             this._art.setArt(media.uri);

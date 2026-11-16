@@ -138,6 +138,11 @@ export class Controller {
         }
         const dot = this._dateMenu?._indicator;
         dot?.connectObject?.('notify::visible', () => this._refreshCompact(), this);
+
+        // Icons coming and going (or changing width) on either side of the top bar.
+        for (const box of [Main.panel._leftBox, Main.panel._rightBox])
+            box?.connectObject?.('notify::allocation', () => this._queueFit(), this);
+        this._dateMenu?.connectObject?.('notify::allocation', () => this._queueFit(), this);
     }
 
     _bindKeys(on) {
@@ -151,26 +156,76 @@ export class Controller {
         }
     }
 
-    /** The clock moves into the island; GNOME's button stays (invisible) for its menu and Super+V. */
+    /**
+     * The clock moves into the island. GNOME's clock button stays where it was, invisible, and
+     * is sized to the pill: the top bar lays out its icons around it exactly as around the clock,
+     * so the island never sits on them. Its menu and Super+V keep working.
+     */
     _hideGnomeClock() {
         const dateMenu = Main.panel.statusArea.dateMenu;
         if (!dateMenu)
             return;
         this._dateMenu = dateMenu;
         const box = dateMenu._clockDisplay?.get_parent();
-        if (box && box !== dateMenu) {
+        if (box && box !== dateMenu)
             this._clockBox = box;
-            box.hide();
-        }
         dateMenu.opacity = 0;
     }
 
     _restoreGnomeClock() {
-        this._clockBox?.show();
+        if (this._clockBox)
+            this._clockBox.width = -1;
         this._clockBox = null;
+        this._slotWidth = 0;
         if (this._dateMenu)
             this._dateMenu.opacity = 255;
         this._dateMenu = null;
+    }
+
+    /** Make the clock's slot in the top bar as wide as the pill. */
+    _reserve(width) {
+        if (!this._clockBox || width === this._slotWidth)
+            return;
+        this._slotWidth = width;
+        this._clockBox.width = width;
+    }
+
+    /**
+     * Room for the pill in the middle of the top bar without pushing out an icon: GNOME gives
+     * each side the same width, so the fuller side decides.
+     */
+    _room() {
+        const panel = Main.panel;
+        const left = panel._leftBox, right = panel._rightBox;
+        if (!left || !right || !this._dateMenu || !this._clockBox)
+            return Infinity;
+        const [, leftWidth] = left.get_preferred_width(-1);
+        const [, rightWidth] = right.get_preferred_width(-1);
+        const padding = this._dateMenu.get_preferred_width(-1)[1] - this._clockBox.get_preferred_width(-1)[1];
+        return panel.width - 2 * Math.max(leftWidth, rightWidth) - Math.max(0, padding);
+    }
+
+    /** The island sits over the clock's slot, which GNOME centres on the work area. */
+    _placeX() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        const slot = this._dateMenu;
+        let offset = 0;
+        if (monitor && slot?.mapped && !this._locked) {
+            const [x] = slot.get_transformed_position();
+            offset = Math.round(x + slot.width / 2 - (monitor.x + monitor.width / 2));
+        }
+        this.island.setOffset(offset);
+    }
+
+    _queueFit() {
+        if (this._fitIdle)
+            return;
+        this._fitIdle = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._fitIdle = 0;
+            this._refreshCompact();
+            this._placeX();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _place() {
@@ -191,6 +246,7 @@ export class Controller {
         this.island.setGeometry(scale, top);
         this.compact.setHeight(this._compactHeight);
         this.island.refit(false);
+        this._queueFit();
     }
 
     _applyAppearance() {
@@ -220,6 +276,7 @@ export class Controller {
         }
         this._refreshCompact();
         this._syncVisibility();
+        this._queueFit();
     }
 
     // ------------------------------------------------------------------ what can show
@@ -315,12 +372,19 @@ export class Controller {
             title = true;
         }
         const art = showMedia ? this._artFor(player) : null;
-        this.compact.update({
-            text,
-            title,
-            dot: !this._locked && !!this._dateMenu?._indicator?.visible,
-            media: showMedia ? {uri: art?.uri ?? null, accent: this._accent(art), playing: player.playing} : null,
-        });
+        const dot = !this._locked && !!this._dateMenu?._indicator?.visible;
+        const media = showMedia ? {uri: art?.uri ?? null, accent: this._accent(art), playing: player.playing} : null;
+        // On a crowded top bar, give up the bars, then the artwork, before covering an icon.
+        const room = this._locked ? Infinity : this._room();
+        const fits = () => this.compact.actor.get_preferred_width(-1)[1] <= room;
+        const clock = this._clock.clock;
+        this.compact.update({text, title, dot, media, bars: true});
+        if (media && !fits()) {
+            this.compact.update({text, title, dot, media, bars: false});
+            if (!fits())
+                this.compact.update({text: clock, title: false, dot, media: null});
+        }
+        this._reserve(this._locked ? 0 : this.compact.actor.get_preferred_width(-1)[1]);
         this._clearTimer('linger');
         if (player && !player.playing) {
             const left = PAUSED_LINGER_US - (GLib.get_monotonic_time() - player.pausedAt);
@@ -909,6 +973,12 @@ export class Controller {
         for (const name of ['dateMenu', 'quickSettings'])
             Main.panel.statusArea[name]?.menu?.disconnectObject?.(this);
         this._dateMenu?._indicator?.disconnectObject?.(this);
+        for (const box of [Main.panel._leftBox, Main.panel._rightBox])
+            box?.disconnectObject?.(this);
+        this._dateMenu?.disconnectObject?.(this);
+        if (this._fitIdle)
+            GLib.source_remove(this._fitIdle);
+        this._fitIdle = 0;
 
         this.dashboard.calendar.watch(false);
         // The views first: the dashboard may never have been shown, so be in no parent yet.

@@ -86,6 +86,10 @@ song title. Notifications, your calendar and the shortcut never do. This can be 
 
 Over a fullscreen video or game, the island steps aside and GNOME's own pop-ups show as usual.
 When GNOME's own menus open from the top bar, the island closes for them.
+At rest, the island takes the clock's place in the top bar and your icons are laid out around
+it exactly as around the clock, so it never sits on them. On a crowded top bar (a small laptop
+screen, many indicators), the pill drops the bars, then the artwork, before it would push an icon
+out; they come back when there is room.
 
 ## Command
 
@@ -111,7 +115,8 @@ it is (a file, or the web address the player gives, as Spotify does), and kept i
 
 Cartouche is a GNOME Shell extension. The island is one actor above the top bar that morphs
 between views, growing with a little overshoot and settling when it shrinks. GNOME's clock
-button stays in place but invisible, so its menu and Super+V still work. Volume and brightness
+button stays in place but invisible, sized to the pill, so the top bar keeps its usual layout and
+its menu and Super+V still work. Volume and brightness
 come from GNOME's own OSD manager, notifications from GNOME's own message tray: Cartouche takes
 over the one method that would show the pop-up or the banner, on GNOME's object rather than its
 class, and gives it back when turned off. Everything else is read from D-Bus: MPRIS for music,
