@@ -153,6 +153,16 @@ def run(rig, r):
     r.check("it is a pill a little shorter than the bar", g["panel"] - 10 <= g["h"] < g["panel"], g)
     c.shot("01-compact")
 
+    print("another screen, another scale")
+    for scale in (2, 1, 2, 1):
+        rig.js(f"imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = {scale}; 1")
+        time.sleep(1.2)
+        g = c.geometry()
+        nat = rig.js(f"{C}.compact.actor.get_preferred_size().slice(2)")
+        r.check(f"at scale {scale}, the pill fits inside the top bar", g["y"] >= 0 and g["y"] + g["h"] <= g["panel"], g)
+        r.check(f"  and fits its contents", [round(g["w"]), round(g["h"])] == [round(nat[0]), round(nat[1])], (g, nat))
+        r.check(f"  and its place in the top bar follows", rig.js(f"Main.panel.statusArea.dateMenu._clockDisplay.get_parent().width === {C}.compact.actor.get_preferred_width(-1)[1]"))
+
     print("opening up")
     c.rest(1.2)
     r.check("resting the pointer on it opens it", c.mode() == "expanded")

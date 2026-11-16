@@ -27,7 +27,7 @@ export class CompactView {
             return;
         this._height = height;
         this.actor.style = `height: ${height}px;`;
-        this._art.setSize(Math.max(14, height - 8));
+        this._art.setSize(Math.max(10, Math.round(height - 8)));
     }
 
     /**

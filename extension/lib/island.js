@@ -2,6 +2,7 @@
 // nothing about music or notifications; it is handed a view, and grows or shrinks to fit it.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
@@ -29,6 +30,9 @@ const IslandLayout = GObject.registerClass({
             const [, natH] = child.get_preferred_height(natW);
             const x = Math.round(box.x1 + (width - natW) / 2);
             child.allocate(Clutter.ActorBox.new(x, box.y1, x + natW, box.y1 + natH));
+            // The view changed size by itself (a restyle after a scale change, say): follow it.
+            if (child === container.view && (natW !== container.target[0] || natH !== container.target[1]))
+                container.queueRefit();
         }
     }
 });
@@ -69,6 +73,22 @@ export const Island = GObject.registerClass({
         this._appearance = '';
         this._scale = 1;
         this.connect('notify::height', () => this._restyle());
+        this.connect('destroy', () => {
+            if (this._refitIdle)
+                GLib.source_remove(this._refitIdle);
+            this._refitIdle = 0;
+        });
+    }
+
+    /** Refit after the current layout pass: sizes cannot change during one. */
+    queueRefit() {
+        if (this._refitIdle)
+            return;
+        this._refitIdle = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._refitIdle = 0;
+            this.refit();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     get view() {

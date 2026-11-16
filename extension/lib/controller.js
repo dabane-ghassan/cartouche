@@ -114,9 +114,12 @@ export class Controller {
         this.focus.connectObject('changed', (_f, on) => this._onFocus(on), this);
 
         this._settings.connectObject('changed', (_s, key) => this._onSetting(key), this);
-        Main.layoutManager.connectObject('monitors-changed', () => this._place(), this);
-        Main.panel.connectObject('notify::height', () => this._place(), this);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('notify::scale-factor', () => this._place(), this);
+        // Another screen, another scale: place again once the top bar has its new size.
+        Main.layoutManager.connectObject('monitors-changed', () => this._queuePlace(), this);
+        Main.layoutManager.panelBox.connectObject('notify::allocation', () => this._queuePlace(), this);
+        St.ThemeContext.get_for_stage(global.stage).connectObject(
+            'notify::scale-factor', () => this._queuePlace(),
+            'changed', () => this._queuePlace(), this);
         Main.sessionMode.connectObject('updated', () => this._onSession(), this);
         Main.overview.connectObject('showing', () => this.collapse(), this);
         global.display.connectObject(
@@ -228,7 +231,20 @@ export class Controller {
         });
     }
 
+    /** Wait for the top bar to settle at its new size (another screen, another scale) first. */
+    _queuePlace() {
+        if (this._placeIdle)
+            return;
+        this._placeIdle = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._placeIdle = 0;
+            this._place();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _place() {
+        if (this._destroyed)
+            return;
         const monitor = Main.layoutManager.primaryMonitor;
         if (!monitor)
             return;
@@ -237,13 +253,14 @@ export class Controller {
         this._stage.set_size(monitor.width, monitor.height);
         let panelHeight = Main.panel.height;
         const [, panelY] = Main.layoutManager.panelBox.get_transformed_position();
-        const panelOnTop = Main.layoutManager.panelBox.visible && panelHeight >= 16 * scale &&
+        const panelOnTop = Main.layoutManager.panelBox.visible && panelHeight >= 16 &&
             Math.abs(panelY - monitor.y) < 2;
         if (!panelOnTop)
             panelHeight = 32 * scale;
-        this._compactHeight = Math.max(20, Math.round(panelHeight / scale) - 6);
-        const top = Math.max(0, (panelHeight / scale - this._compactHeight) / 2);
-        this.island.setGeometry(scale, top);
+        // Always inside the bar: a small gap above and below, whatever the bar's height and scale.
+        const gap = Math.min(3 * scale, panelHeight * 0.12);
+        this._compactHeight = Math.round((panelHeight - 2 * gap) / scale * 100) / 100;
+        this.island.setGeometry(scale, gap / scale);
         this.compact.setHeight(this._compactHeight);
         this.island.refit(false);
         this._queueFit();
@@ -965,7 +982,10 @@ export class Controller {
         this._clock.disconnectObject(this);
         this._settings.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
-        Main.panel.disconnectObject(this);
+        Main.layoutManager.panelBox.disconnectObject(this);
+        if (this._placeIdle)
+            GLib.source_remove(this._placeIdle);
+        this._placeIdle = 0;
         St.ThemeContext.get_for_stage(global.stage).disconnectObject(this);
         Main.sessionMode.disconnectObject(this);
         Main.overview.disconnectObject(this);
