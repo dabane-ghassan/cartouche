@@ -163,6 +163,26 @@ def run(rig, r):
         r.check(f"  and fits its contents", [round(g["w"]), round(g["h"])] == [round(nat[0]), round(nat[1])], (g, nat))
         r.check(f"  and its place in the top bar follows", rig.js(f"Main.panel.statusArea.dateMenu._clockDisplay.get_parent().width === {C}.compact.actor.get_preferred_width(-1)[1]"))
 
+    print("logging in")
+    # A taller top bar than the usual 32px, so a guessed size would show.
+    rig.js("Main.panel.style = 'height: 44px;'; 1")
+    time.sleep(0.8)
+    expected = rig.js(f"{C}.island.height")
+    # At login GNOME enables extensions while the top bar is still above the screen, then
+    # slides it down: do the same.
+    rig.js(f"Main.extensionManager.disableExtension('{UUID}'); Main.layoutManager.panelBox.translation_y = -Main.layoutManager.panelBox.height; 1")
+    time.sleep(0.5)
+    rig.js(f"Main.extensionManager.enableExtension('{UUID}'); 1")
+    time.sleep(0.5)
+    rig.js("Main.layoutManager.panelBox.ease({translation_y: 0, duration: 250, onComplete: () => Main.layoutManager.emit('startup-complete')}); 1")
+    time.sleep(1.2)
+    g = c.geometry()
+    r.check("enabled while the top bar slides in at login, the pill still fits the bar", g["y"] >= 0 and g["y"] + g["h"] <= g["panel"] and g["h"] == expected, (g, expected))
+    rig.js("Main.panel.style = null; 1")
+    time.sleep(0.8)
+    g = c.geometry()
+    r.check("and follows the bar when it changes height", g["panel"] == 32 and g["h"] == 26, g)
+
     print("opening up")
     c.rest(1.2)
     r.check("resting the pointer on it opens it", c.mode() == "expanded")

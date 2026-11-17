@@ -115,7 +115,9 @@ export class Controller {
 
         this._settings.connectObject('changed', (_s, key) => this._onSetting(key), this);
         // Another screen, another scale: place again once the top bar has its new size.
-        Main.layoutManager.connectObject('monitors-changed', () => this._queuePlace(), this);
+        Main.layoutManager.connectObject(
+            'monitors-changed', () => this._queuePlace(),
+            'startup-complete', () => this._queuePlace(), this);
         Main.layoutManager.panelBox.connectObject('notify::allocation', () => this._queuePlace(), this);
         St.ThemeContext.get_for_stage(global.stage).connectObject(
             'notify::scale-factor', () => this._queuePlace(),
@@ -251,10 +253,13 @@ export class Controller {
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
         this._stage.set_position(monitor.x, monitor.y);
         this._stage.set_size(monitor.width, monitor.height);
-        let panelHeight = Main.panel.height;
-        const [, panelY] = Main.layoutManager.panelBox.get_transformed_position();
-        const panelOnTop = Main.layoutManager.panelBox.visible && panelHeight >= 16 &&
-            Math.abs(panelY - monitor.y) < 2;
+        // Where the top bar is laid out, not where it is drawn: at login GNOME slides it in from
+        // above the screen, and measuring it mid-slide would find no top bar at all.
+        const panelBox = Main.layoutManager.panelBox;
+        let panelHeight = Main.panel.height || panelBox.height;
+        if (!panelHeight && panelBox.visible)
+            return;                     // not laid out yet: its allocation will call us back
+        const panelOnTop = panelBox.visible && panelHeight >= 16 && Math.abs(panelBox.y - monitor.y) < 2;
         if (!panelOnTop)
             panelHeight = 32 * scale;
         // Always inside the bar: a small gap above and below, whatever the bar's height and scale.
