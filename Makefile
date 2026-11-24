@@ -44,6 +44,7 @@ lint:
 # End-to-end tests in a headless GNOME Shell (see tests/README.md).
 test:
 	python3 tests/run.py
+	python3 tests/boot.py
 
 clean:
 	rm -rf $(DIST) extension/schemas/gschemas.compiled tests/out tests/cover*.png

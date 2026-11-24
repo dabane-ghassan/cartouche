@@ -173,18 +173,18 @@ export const Island = GObject.registerClass({
     }
 
     /** Grow or shrink to the current view's size; with a little overshoot when growing. */
-    refit(animate = true) {
+    refit(animate = true, force = false) {
         const view = this._view;
         if (!view)
             return;
         const [, width] = view.get_preferred_width(-1);
         const [, height] = view.get_preferred_height(width);
         const [w0, h0] = this._target;
-        if (width === w0 && height === h0)
+        if (width === w0 && height === h0 && !force)
             return;
         this._target = [width, height];
         this._applyOffset();
-        if (!animate || !animations() || !this.mapped || !w0) {
+        if (!animate || force || !animations() || !this.mapped || !w0) {
             this.remove_transition('width');
             this.remove_transition('height');
             this.set_size(width, height);

@@ -183,6 +183,24 @@ def run(rig, r):
     g = c.geometry()
     r.check("and follows the bar when it changes height", g["panel"] == 32 and g["h"] == 26, g)
 
+    print("a size gone stale")
+    good = c.geometry()
+    # As if the session changed screens without GNOME telling us: wrong pill height, wrong
+    # outline, a stale record of the top bar. The next clock tick has to put it right.
+    rig.js(f"{C}.compact.setHeight(54); {C}._placed = {{...{C}._placed, compactHeight: 54}}; {C}._compactHeight = 54; {C}.island.set_size(420, 60); 1")
+    time.sleep(0.3)
+    rig.js(f"{C}._onClock(); 1")
+    time.sleep(0.8)
+    g = c.geometry()
+    r.check("the next clock tick puts the pill back to the top bar's size", (g["y"], g["h"], g["w"]) == (good["y"], good["h"], good["w"]), (g, good))
+    rig.js(f"{C}.island.set_size(420, 60); 1")
+    rig.js(f"{C}._onClock(); 1")
+    time.sleep(0.5)
+    g = c.geometry()
+    r.check("and the outline back to the pill's", (g["h"], g["w"]) == (good["h"], good["w"]), (g, good))
+    st = c.state()
+    r.check("cartouche state reports the sizes, for bug reports", st["geometry"]["pill"] == good["h"] and st["geometry"]["panel"][1] == good["panel"], st.get("geometry"))
+
     print("opening up")
     c.rest(1.2)
     r.check("resting the pointer on it opens it", c.mode() == "expanded")

@@ -85,6 +85,9 @@ export class Controller {
         this._notifications = new NotificationRouter(n => this._wantsNotification(n), n => this._showNotification(n));
         if (!this._locked)
             this._bindKeys(true);
+        // The session may still be settling its screens: look again a little later.
+        this._setTimer('settle1', 2000, () => this._heal());
+        this._setTimer('settle2', 10000, () => this._heal());
     }
 
     // ------------------------------------------------------------------ wiring
@@ -118,7 +121,9 @@ export class Controller {
         Main.layoutManager.connectObject(
             'monitors-changed', () => this._queuePlace(),
             'startup-complete', () => this._queuePlace(), this);
-        Main.layoutManager.panelBox.connectObject('notify::allocation', () => this._queuePlace(), this);
+        Main.layoutManager.panelBox.connectObject(
+            'notify::allocation', () => this._queuePlace(),
+            'notify::visible', () => this._queuePlace(), this);
         St.ThemeContext.get_for_stage(global.stage).connectObject(
             'notify::scale-factor', () => this._queuePlace(),
             'changed', () => this._queuePlace(), this);
@@ -244,31 +249,76 @@ export class Controller {
         });
     }
 
-    _place() {
-        if (this._destroyed)
-            return;
+    /**
+     * Where the island goes and how tall the pill is, from the top bar as it is now; null while
+     * the top bar is not laid out yet (its allocation calls us back).
+     */
+    _geometry() {
         const monitor = Main.layoutManager.primaryMonitor;
         if (!monitor)
-            return;
+            return null;
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
-        this._stage.set_position(monitor.x, monitor.y);
-        this._stage.set_size(monitor.width, monitor.height);
         // Where the top bar is laid out, not where it is drawn: at login GNOME slides it in from
         // above the screen, and measuring it mid-slide would find no top bar at all.
         const panelBox = Main.layoutManager.panelBox;
         let panelHeight = Main.panel.height || panelBox.height;
         if (!panelHeight && panelBox.visible)
-            return;                     // not laid out yet: its allocation will call us back
+            return null;
         const panelOnTop = panelBox.visible && panelHeight >= 16 && Math.abs(panelBox.y - monitor.y) < 2;
         if (!panelOnTop)
             panelHeight = 32 * scale;
         // Always inside the bar: a small gap above and below, whatever the bar's height and scale.
         const gap = Math.min(3 * scale, panelHeight * 0.12);
-        this._compactHeight = Math.round((panelHeight - 2 * gap) / scale * 100) / 100;
-        this.island.setGeometry(scale, gap / scale);
-        this.compact.setHeight(this._compactHeight);
+        return {
+            monitor,
+            scale,
+            gap: gap / scale,
+            compactHeight: Math.round((panelHeight - 2 * gap) / scale * 100) / 100,
+        };
+    }
+
+    _place() {
+        if (this._destroyed)
+            return;
+        const geometry = this._geometry();
+        if (!geometry)
+            return;
+        const {monitor, scale, gap, compactHeight} = geometry;
+        this._stage.set_position(monitor.x, monitor.y);
+        this._stage.set_size(monitor.width, monitor.height);
+        this._compactHeight = compactHeight;
+        this._placed = geometry;
+        this.island.setGeometry(scale, gap);
+        this.compact.setHeight(compactHeight);
         this.island.refit(false);
         this._queueFit();
+    }
+
+    /**
+     * A last line of defence, run whenever the pill is refreshed (at least every minute): if
+     * the top bar, the screen or the scale changed without GNOME telling us (it can happen while
+     * the session starts), or the pill is not the size of what it shows, put it right.
+     */
+    _heal() {
+        if (this._destroyed || this._placeIdle)
+            return;
+        const now = this._geometry();
+        const was = this._placed;
+        if (now && (!was || now.scale !== was.scale || now.gap !== was.gap ||
+                now.compactHeight !== was.compactHeight || now.monitor.x !== this._stage.x ||
+                now.monitor.y !== this._stage.y || now.monitor.width !== this._stage.width ||
+                now.monitor.height !== this._stage.height)) {
+            this._place();
+            return;
+        }
+        if (this._mode === 'compact' && !this.island.get_transition('width') && !this.island.get_transition('height')) {
+            const [width, height] = this.island.target;
+            const [, natW] = this.compact.actor.get_preferred_width(-1);
+            const [, natH] = this.compact.actor.get_preferred_height(natW);
+            if (Math.abs(this.island.width - natW) > 0.5 || Math.abs(this.island.height - natH) > 0.5 ||
+                width !== natW || height !== natH)
+                this.island.refit(false, true);
+        }
     }
 
     _applyAppearance() {
@@ -416,6 +466,7 @@ export class Controller {
         if (this._mode === 'compact')
             this.island.refit();
         this._syncVisibility();
+        this._heal();
     }
 
     _accent(art) {
@@ -969,6 +1020,16 @@ export class Controller {
             player: player ? {title: player.title, artist: player.artist, status: player.status, name: player.busName} : null,
             battery: this.power.info,
             focus: this.focus.enabled,
+            // for reports of a wrong size: what the island measured, and what it sees now
+            geometry: {
+                scale: St.ThemeContext.get_for_stage(global.stage).scale_factor,
+                panel: [Main.panel.width, Main.panel.height],
+                monitor: Main.layoutManager.primaryMonitor
+                    ? [Main.layoutManager.primaryMonitor.width, Main.layoutManager.primaryMonitor.height] : null,
+                pill: this._compactHeight,
+                island: [this.island.width, this.island.height],
+                slot: this._slotWidth ?? 0,
+            },
         };
     }
 

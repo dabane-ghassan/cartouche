@@ -22,5 +22,9 @@ move an empty `/run/systemd/seats` out of the way. The headless shell has no scr
 the lock screen is entered by switching to its session mode (`unlock-dialog`), which is what
 locking does as far as extensions and the top bar are concerned.
 
+`tests/boot.py` replays the orders a session start can bring: the top bar hidden or sliding
+in at login, the scale flipping, the bar changing while the island is open, hidden or behind a
+fullscreen window. After each, the pill must fit the bar and its contents.
+
 The headless shell cannot show sound, fullscreen windows or the exact pacing of animations (it
 draws frames as fast as it can).
