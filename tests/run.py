@@ -399,6 +399,26 @@ def run(rig, r):
     r.check("a new song is shown for a moment", c.wait(lambda: c.peek() == "track", 3))
     c.wait(lambda: rig.js(f"{C}._current?.view?._art?._uri") is not None, 3)
     c.shot("10-track")
+    print("music never leaves the top bar")
+    c.settle()
+    for scale, style in [(1, None), (1, "height: 44px;"), (2, None), (1, "height: 24px;")]:
+        rig.js(f"imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = {scale}; Main.panel.style = {repr(style) if style else 'null'}; 1")
+        time.sleep(1.2)
+        # Sample every frame from inside the shell while the song changes and the volume moves.
+        rig.js(f"""global._worst = 0; global._watch = global.stage.connect('after-paint', () => {{
+            const i = {C}.island; if (!i || !i.visible) return; const [, y] = i.get_transformed_position();
+            if ({C}.mode !== 'expanded' && {C}._current?.kind !== 'notification')
+                global._worst = Math.max(global._worst, y + i.height - Main.panel.height); }}); 1""")
+        c.call("Next")
+        time.sleep(1.0)
+        c.osd("audio-volume-medium-symbolic", 0.6)
+        time.sleep(1.0)
+        c.call("PlayPause"); time.sleep(0.4); c.call("PlayPause")
+        time.sleep(3.0)
+        worst = rig.js("global.stage.disconnect(global._watch); global._worst")
+        r.check(f"at scale {scale}{', ' + style if style else ''}: the pill, the new song and the volume stay inside the bar", worst <= 0.01, worst)
+    rig.js("imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 1; Main.panel.style = null; 1")
+    time.sleep(1.0)
     c.settle()
     rig.t("move(641, 14)", 0.05)
     rig.js(f"{C}._settings.set_int('hover-delay', 2000); 1")

@@ -27,7 +27,9 @@ export class CompactView {
             return;
         this._height = height;
         this.actor.style = `height: ${height}px;`;
-        this._art.setSize(Math.max(10, Math.round(height - 8)));
+        // Everything inside stays inside: artwork and bars are sized from the pill.
+        this._art.setSize(Math.max(8, Math.round(height - 8)));
+        this._bars.setHeight(Math.max(6, Math.min(14, Math.round(height - 10))));
     }
 
     /**
@@ -37,7 +39,7 @@ export class CompactView {
      * title: whether the text is a track title (it gets a width limit)
      * bars: whether the bars fit (false on a crowded top bar)
      */
-    update({text, dot, media, title, bars = true}) {
+    update({text, dot, media, title, bars = true, wide = false}) {
         this._label.text = text;
         const withMedia = !!media;
         this._art.visible = withMedia;
@@ -56,5 +58,9 @@ export class CompactView {
             this._label.add_style_class_name('cartouche-compact-title');
         else
             this._label.remove_style_class_name('cartouche-compact-title');
+        if (wide)
+            this._label.add_style_class_name('cartouche-compact-wide');
+        else
+            this._label.remove_style_class_name('cartouche-compact-wide');
     }
 }

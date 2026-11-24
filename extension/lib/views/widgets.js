@@ -74,6 +74,7 @@ export const Bars = GObject.registerClass({
         this._timer = 0;
         this._playing = false;
         this._color = null;
+        this._height = 0;
         this.connect('notify::mapped', () => this._sync());
         this.connect('destroy', () => this._stop());
     }
@@ -82,8 +83,26 @@ export const Bars = GObject.registerClass({
         if (css === this._color)
             return;
         this._color = css;
+        this._restyle();
+    }
+
+    /** Height in logical pixels; 0 leaves it to the stylesheet. */
+    setHeight(height) {
+        if (height === this._height)
+            return;
+        this._height = height;
+        this.style = height ? `height: ${height}px;` : null;
+        this._restyle();
+    }
+
+    _restyle() {
+        let style = '';
+        if (this._height)
+            style += `height: ${this._height}px;`;
+        if (this._color)
+            style += `background-color: ${this._color};`;
         for (const bar of this._bars)
-            bar.style = css ? `background-color: ${css};` : null;
+            bar.style = style || null;
     }
 
     setPlaying(playing) {

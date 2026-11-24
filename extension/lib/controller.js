@@ -698,7 +698,7 @@ export class Controller {
     _showHud(osd) {
         const style = this._settings.get_string('hud-style');
         const percent = this._settings.get_boolean('hud-percent');
-        const height = this._compactHeight + 8;
+        const height = this._compactHeight;   // inside the top bar, like the pill
         this._peek({
             kind: 'hud',
             key: `hud:${style}:${percent}`,
@@ -813,13 +813,20 @@ export class Controller {
             this._reapply();
     }
 
+    /**
+     * A new song, for a moment: the pill widens to show the title and artist, at the height of
+     * the top bar, like the pill itself (it never drops below the bar).
+     */
     _trackInfo(player) {
         const art = this._artFor(player);
+        const title = player.title || 'Now playing';
+        const artist = player.artist || player.identity;
         return {
-            lead: {art: art?.uri ?? null},
-            title: player.title || 'Now playing',
-            subtitle: player.artist || player.identity,
-            trail: {bars: this._accent(art) ?? 'rgba(255, 255, 255, 0.85)'},
+            text: artist ? `${title} — ${artist}` : title,
+            title: true,
+            wide: true,
+            dot: false,
+            media: {uri: art?.uri ?? null, accent: this._accent(art), playing: player.playing},
         };
     }
 
@@ -828,7 +835,17 @@ export class Controller {
             return;
         if (this._mode === 'expanded' || this._current?.kind === 'notification')
             return;
-        this._activity('track', 'track', () => this._trackInfo(player), 2800, {
+        const height = this._compactHeight;
+        this._peek({
+            kind: 'track',
+            key: 'track',
+            make: () => {
+                const view = new CompactView();
+                view.setHeight(height);
+                return view;
+            },
+            apply: view => view.update(this._trackInfo(player)),
+            duration: 2800,
             valid: () => player === this.media.active,
             activate: () => this.expand(),
         });

@@ -63,7 +63,8 @@ Online Accounts). Below: the battery, Do Not Disturb, GNOME's notification list,
 
 - **What is playing**, from any player that speaks MPRIS: Spotify, Firefox, Chrome, Rhythmbox,
   Lollypop, Amberol, mpv, VLC… The bars take the colour of the album art. Paused music stays in
-  the pill for two minutes. Each new song shows for a moment. The pill can show the artwork
+  the pill for two minutes. Each new song shows its title and artist in the pill for a moment.
+  The pill, the new song and the volume level always stay inside the top bar. The pill can show the artwork
   around the clock (the default), the song title, or just the clock.
 - **Volume, screen brightness, keyboard backlight and microphone**, instead of GNOME's pop-up in
   the middle of the screen, as a smooth bar or sixteen segments, with or without the percentage.
