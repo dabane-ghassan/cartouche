@@ -87,7 +87,8 @@ song title. Notifications, your calendar and the shortcut never do. This can be 
 
 Over a fullscreen video or game, the island steps aside and GNOME's own pop-ups show as usual.
 When GNOME's own menus open from the top bar, the island closes for them.
-At rest, the island takes the clock's place in the top bar and your icons are laid out around
+The pill is sized and placed from GNOME's clock button, inside the top bar's own lines, so it
+fits whatever shell theme you use (borders, padding, a coloured line under the bar). At rest, the island takes the clock's place in the top bar and your icons are laid out around
 it exactly as around the clock, so it never sits on them. On a crowded top bar (a small laptop
 screen, many indicators), the pill drops the bars, then the artwork, before it would push an icon
 out; they come back when there is room.

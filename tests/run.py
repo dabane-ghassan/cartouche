@@ -419,6 +419,36 @@ def run(rig, r):
         r.check(f"at scale {scale}{', ' + style if style else ''}: the pill, the new song and the volume stay inside the bar", worst <= 0.01, worst)
     rig.js("imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 1; Main.panel.style = null; 1")
     time.sleep(1.0)
+
+    print("themed top bars")
+    # Shell themes draw the bar inside a taller area: padding, margins, a coloured line at the
+    # bottom (like a red border-bottom). The pill belongs in the clock's place, inside all that.
+    themes = [
+        "padding: 4px 0; border-bottom: 3px solid red; height: 40px;",
+        "padding-top: 6px; border-bottom: 4px solid red;",
+        "border: 2px solid red; height: 36px;",
+    ]
+    for scale in (1, 2):
+        for theme in themes:
+            rig.js(f"imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = {scale}; Main.panel.style = '{theme}'; 1")
+            time.sleep(1.2)
+            rig.js(f"""global._worst = -99; global._watch = global.stage.connect('after-paint', () => {{
+                const i = {C}.island; if (!i || !i.visible || {C}.mode === 'expanded' || {C}._current?.kind === 'notification') return;
+                const [, y] = i.get_transformed_position(); const [, py] = Main.panel.get_transformed_position();
+                const node = Main.panel.get_theme_node();
+                const top = py + node.get_border_width(imports.gi.St.Side.TOP) + node.get_padding(imports.gi.St.Side.TOP);
+                const bottom = py + Main.panel.height - node.get_border_width(imports.gi.St.Side.BOTTOM) - node.get_padding(imports.gi.St.Side.BOTTOM);
+                global._worst = Math.max(global._worst, top - y, y + i.height - bottom); }}); 1""")
+            c.call("Next")
+            time.sleep(1.0)
+            c.osd("audio-volume-medium-symbolic", 0.6)
+            time.sleep(3.2)
+            worst = rig.js("global.stage.disconnect(global._watch); global._worst")
+            g = c.geometry()
+            r.check(f"scale {scale}, top bar '{theme}': with music, the pill stays inside the bar's lines", worst <= 0.01 and g["h"] >= 12, (worst, g))
+    c.shot("12b-themed-bar")
+    rig.js("imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor = 1; Main.panel.style = null; 1")
+    time.sleep(1.0)
     c.settle()
     rig.t("move(641, 14)", 0.05)
     rig.js(f"{C}._settings.set_int('hover-delay', 2000); 1")

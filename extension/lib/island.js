@@ -68,7 +68,9 @@ export const Island = GObject.registerClass({
         this._top = 0;
         this._offset = 0;
         this._view = null;
+        this._from = null;
         this._persistent = new Set();
+        this._inBar = new Set();
         this._target = [0, 0];
         this._appearance = '';
         this._scale = 1;
@@ -144,6 +146,7 @@ export const Island = GObject.registerClass({
             return;
         }
         const old = this._view;
+        this._from = old;
         this._view = actor;
         const smooth = animate && animations() && this.mapped;
         if (old) {
@@ -190,13 +193,30 @@ export const Island = GObject.registerClass({
             this.set_size(width, height);
             return;
         }
-        const grow = width * height >= w0 * h0;
+        const grow = width >= w0;
         this.ease({
             width,
-            height,
             duration: grow ? GROW_MS : SHRINK_MS,
             mode: grow ? Clutter.AnimationMode.EASE_OUT_BACK : Clutter.AnimationMode.EASE_OUT_QUINT,
         });
+        // Inside the top bar the height never moves: it is the clock's spot, exactly. Only views
+        // that open below the bar grow down (with a little bounce), and shrink back up without one.
+        if (this._inBar.has(view) && (this._inBar.has(this._from) || this.height <= height)) {
+            this.remove_transition('height');
+            this.height = height;
+        } else {
+            this.ease({
+                height,
+                duration: height > this.height ? GROW_MS : SHRINK_MS,
+                mode: height > this.height ? Clutter.AnimationMode.EASE_OUT_BACK : Clutter.AnimationMode.EASE_OUT_QUINT,
+            });
+        }
+    }
+
+    /** Views that sit inside the top bar (the pill, levels, the new song), as opposed to below it. */
+    markInBar(actor) {
+        this._inBar.add(actor);
+        actor.connect('destroy', () => this._inBar.delete(actor));
     }
 
     /**

@@ -68,6 +68,7 @@ export class Controller {
         this._stage = new St.Widget({name: 'cartoucheStage', reactive: false, layout_manager: new Clutter.BinLayout()});
         this.island = new Island();
         this.island.keep(this.compact.actor);
+        this.island.markInBar(this.compact.actor);
         this.island.keep(this.dashboard.actor);
         this._stage.add_child(this.island);
         Main.layoutManager.addChrome(this._stage, chromeParams({trackFullscreen: true}, false));
@@ -152,7 +153,12 @@ export class Controller {
         // Icons coming and going (or changing width) on either side of the top bar.
         for (const box of [Main.panel._leftBox, Main.panel._rightBox])
             box?.connectObject?.('notify::allocation', () => this._queueFit(), this);
-        this._dateMenu?.connectObject?.('notify::allocation', () => this._queueFit(), this);
+        this._dateMenu?.connectObject?.(
+            'notify::allocation', () => {
+                this._queueFit();
+                this._queuePlace();
+            },
+            'style-changed', () => this._queuePlace(), this);
     }
 
     _bindKeys(on) {
@@ -258,16 +264,25 @@ export class Controller {
         if (!monitor)
             return null;
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
-        // Where the top bar is laid out, not where it is drawn: at login GNOME slides it in from
-        // above the screen, and measuring it mid-slide would find no top bar at all.
+        const slot = this._clockSlot(monitor, scale);
+        if (slot) {
+            return {
+                monitor,
+                scale,
+                gap: Math.round(slot.top / scale * 100) / 100,
+                compactHeight: Math.round(slot.height / scale * 100) / 100,
+            };
+        }
+        // No clock button to go by (the lock screen, or another extension took it away): a small
+        // gap inside the top bar.
         const panelBox = Main.layoutManager.panelBox;
-        let panelHeight = Main.panel.height || panelBox.height;
+        let panelHeight = Main.panel.get_allocation_box().get_height() || panelBox.get_allocation_box().get_height();
         if (!panelHeight && panelBox.visible)
-            return null;
-        const panelOnTop = panelBox.visible && panelHeight >= 16 && Math.abs(panelBox.y - monitor.y) < 2;
+            return null;    // not laid out yet: its allocation calls us back
+        const panelOnTop = panelBox.visible && panelHeight >= 16 &&
+            Math.abs(panelBox.get_allocation_box().y1 - monitor.y) < 2;
         if (!panelOnTop)
             panelHeight = 32 * scale;
-        // Always inside the bar: a small gap above and below, whatever the bar's height and scale.
         const gap = Math.min(3 * scale, panelHeight * 0.12);
         return {
             monitor,
@@ -275,6 +290,50 @@ export class Controller {
             gap: gap / scale,
             compactHeight: Math.round((panelHeight - 2 * gap) / scale * 100) / 100,
         };
+    }
+
+    /**
+     * Where the clock's pill goes, in pixels from the top of the screen: inside the top bar's own
+     * lines (themes put borders, padding, a coloured line around the bar), inside GNOME's clock
+     * button, and inside the button's own inset when the theme gives it one (the inset its hover
+     * highlight is drawn in) or else a small gap. Measured from the layout, not from what is
+     * drawn: at login GNOME slides the top bar in from above the screen.
+     */
+    _clockSlot(monitor, scale) {
+        const button = this._dateMenu;
+        const panel = Main.panel;
+        const panelBox = Main.layoutManager.panelBox;
+        if (!button || !button.visible || !panelBox.visible || this._locked)
+            return null;
+        // Allocation boxes, not x/y/height: while the top bar is being laid out again (as it is
+        // each time the clock's slot is resized), those return preferred sizes instead.
+        const box = actor => actor.get_allocation_box();
+        const offset = actor => {
+            let y = 0;
+            for (let a = actor; a && a !== panelBox; a = a.get_parent())
+                y += box(a).y1;
+            return y + box(panelBox).y1 - monitor.y;
+        };
+        const S = St.Side;
+        const inset = (node, side) => node.get_border_width(side) + node.get_padding(side);
+        const bar = panel.get_theme_node();
+        const barY = offset(panel);
+        const barTop = barY + inset(bar, S.TOP);
+        const barBottom = barY + box(panel).get_height() - inset(bar, S.BOTTOM);
+        const node = button.get_theme_node();
+        const buttonY = offset(button);
+        const buttonInset = inset(node, S.TOP) + inset(node, S.BOTTOM);
+        let top = Math.max(barTop, buttonY + inset(node, S.TOP));
+        const buttonHeight = box(button).get_height();
+        let bottom = Math.min(barBottom, buttonY + buttonHeight - inset(node, S.BOTTOM));
+        if (!buttonInset) {
+            const gap = Math.min(3 * scale, (bottom - top) * 0.12);
+            top += gap;
+            bottom -= gap;
+        }
+        if (buttonHeight < 16 || bottom - top < 12 || top < 0 || top > 200)
+            return null;    // not laid out yet, or nowhere near the top of the screen
+        return {top, height: bottom - top};
     }
 
     _place() {
@@ -292,6 +351,9 @@ export class Controller {
         this.compact.setHeight(compactHeight);
         this.island.refit(false);
         this._queueFit();
+        // The top bar may still be settling (a new theme, scale or screen lands in steps): look
+        // again shortly, and again after that if anything moved, until two readings agree.
+        this._setTimer('verify', 300, () => this._heal());
     }
 
     /**
@@ -702,7 +764,11 @@ export class Controller {
         this._peek({
             kind: 'hud',
             key: `hud:${style}:${percent}`,
-            make: () => new HudView(style, percent, height),
+            make: () => {
+                const view = new HudView(style, percent, height);
+                this.island.markInBar(view.actor);
+                return view;
+            },
             apply: view => view.update(osd),
             duration: HUD_MS,
         });
@@ -842,6 +908,7 @@ export class Controller {
             make: () => {
                 const view = new CompactView();
                 view.setHeight(height);
+                this.island.markInBar(view.actor);
                 return view;
             },
             apply: view => view.update(this._trackInfo(player)),
